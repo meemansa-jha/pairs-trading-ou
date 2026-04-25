@@ -51,7 +51,7 @@ python run_project.py     # runs full pipeline, populates output/
   (Trade 1, +4.7%) and a controlled stop-loss on a temporary cointegration
   breakdown (Trade 2, −2.7%).
 
-See `report.pdf` for the full discussion.
+See `final_report.pdf` for the full discussion.
 
 ## References
 
