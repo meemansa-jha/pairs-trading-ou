@@ -1,25 +1,8 @@
-"""
-data_loader.py
---------------
-Downloads historical daily adjusted-close prices for a list of tickers
-using yfinance and saves them as a single CSV with dates as the index.
-
-Usage (from the terminal, inside your project folder):
-    python data_loader.py
-
-Requirements:
-    pip install yfinance pandas
-"""
 
 import yfinance as yf
 import pandas as pd
 import os
 
-# ---------------------------------------------------------------------------
-# EDIT THIS LIST to choose your candidate pairs.
-# Each inner list is one candidate pair. You need at least 3-5 pairs to screen.
-# The screener will keep only the ones that pass the cointegration test.
-# ---------------------------------------------------------------------------
 CANDIDATE_PAIRS = [
     # US pairs (use these if you want the easiest, most liquid data)
     ("KO",   "PEP"),     # Coca-Cola vs Pepsi
@@ -34,7 +17,7 @@ CANDIDATE_PAIRS = [
     ("RELIANCE.NS", "ONGC.NS"),
 ]
 
-# Use 4 years: first 3 for training (pair selection + OU fit), last 1 for backtest.
+
 START_DATE = "2021-01-01"
 END_DATE   = "2024-12-31"
 
@@ -51,8 +34,8 @@ def download_prices(tickers, start, end):
     # yfinance returns a Series if only one ticker; force DataFrame
     if isinstance(df, pd.Series):
         df = df.to_frame(tickers[0])
-    df = df.dropna(how="all")               # drop rows where all prices missing
-    df = df.ffill().dropna()                # forward-fill small gaps, then drop any remaining NaN rows
+    df = df.dropna(how="all")               
+    df = df.ffill().dropna()                
     return df
 
 
