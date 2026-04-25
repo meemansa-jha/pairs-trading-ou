@@ -26,7 +26,7 @@ mean-reversion rule out-of-sample.
 
 | File | Description |
 |------|-------------|
-| `report.pdf` / `report.tex` | The main 3-page project report |
+| `report.pdf` / `report.tex` | The main project report |
 | `data_loader.py` | Downloads daily prices from Yahoo Finance |
 | `pairs_analysis.py` | Cointegration test, OU calibration, backtest engine |
 | `run_project.py` | End-to-end pipeline that produces all results |
