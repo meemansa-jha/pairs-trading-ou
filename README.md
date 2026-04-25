@@ -4,7 +4,7 @@ A continuous-time stochastic-calculus approach to pairs trading,
 developed for the Stochastic Calculus for Finance course.
 
 The full theoretical derivation, methodology, and empirical results
-are in **[report.pdf](report.pdf)**.
+are in **[final_report.pdf](report.pdf)**.
 
 ## Authors
 
