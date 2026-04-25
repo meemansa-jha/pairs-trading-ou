@@ -1,0 +1,3 @@
+pair,n_trades,wins,success_ratio,avg_pnl_%,total_pnl_%,sharpe,max_drawdown_%,avg_hold_days
+MA/V,2,1,0.5,1.003,2.006,0.534,-2.67,33.0
+RELIANCE.NS/ONGC.NS,1,1,1.0,0.068,0.068,0.0,0.0,26.0

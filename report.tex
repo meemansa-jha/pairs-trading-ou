@@ -1,0 +1,245 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{siunitx}
+\usepackage{float}
+\usepackage{authblk}
+
+% Tight spacing
+\setlength{\parskip}{10pt}
+\setlength{\parindent}{0pt}
+\renewcommand{\baselinestretch}{1.15}
+\captionsetup{font=small, labelfont=bf, skip=3pt}
+
+% ---------- Shortcuts ----------
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\R}{\mathbb{R}}
+
+% Tighter section headings
+\usepackage{titlesec}
+\titleformat{\section}{\normalsize\bfseries}{\thesection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+
+% ---------- Title ----------
+\title{\vspace{-2.5em}\textbf{\large Pairs Trading via Ornstein--Uhlenbeck Mean Reversion}\\[-2pt]
+{\normalsize A Continuous-Time Stochastic Calculus Approach}}
+\author{\normalsize Vedika Jain- 2024B4A81111G, Meemansa Jha- 2024B4A71096G}
+\affil{\footnotesize Stochastic Calculus for Finance -- Course Project}
+\date{\vspace{-1.5em}}
+
+\begin{document}
+\maketitle
+\vspace{-2.8em}
+
+% ==========================================================
+\section{Motivation and Theoretical Framework}
+% ==========================================================
+
+Individual equity prices are typically modelled as geometric Brownian motions
+and are therefore non-stationary. Yet for certain pairs of stocks in the same
+industry, a linear combination of their log-prices is empirically
+\emph{stationary}. Such pairs are \emph{cointegrated} (Engle \& Granger, 1987);
+the stationary combination (the \emph{spread}) is a natural candidate for a
+mean-reverting SDE. We model the spread as an Ornstein--Uhlenbeck (OU) process,
+calibrate it to training data, and trade a rule that enters when the spread
+is far from its mean and exits when it reverts.
+
+\paragraph{The OU SDE.} On $(\Omega, \mathcal{F}, \{\mathcal{F}_t\}, \mathbb{P})$
+supporting a standard Brownian motion $W(t)$ (Shreve~\cite{shreve2004}, Ch.~3), the
+OU process $X(t)$ satisfies
+\begin{equation}
+    \dd X(t) = \theta\bigl(\mu - X(t)\bigr)\,\dd t + \sigma\,\dd W(t), \qquad X(0)=x_0,
+    \label{eq:ou}
+\end{equation}
+with $\theta>0$ (mean-reversion speed), $\mu\in\R$ (long-run mean), $\sigma>0$
+(volatility). Equation~\eqref{eq:ou} is the Vasicek SDE of Shreve
+Example~4.4.10 under $\theta\!=\!\beta,\mu\!=\!a/\beta$.
+
+\paragraph{Closed-form solution via the It\^o--Doeblin formula.}
+Let $Y(t)=e^{\theta t}X(t)$. Applying the It\^o--Doeblin formula
+(Shreve Thm.~4.4.1) to $f(t,x)=e^{\theta t}x$ ($f_t=\theta e^{\theta t}x$,
+$f_x=e^{\theta t}$, $f_{xx}=0$) and substituting \eqref{eq:ou}, the
+$X(t)\,\dd t$ terms cancel to leave
+$\dd Y(t) = \theta\mu e^{\theta t}\dd t + \sigma e^{\theta t}\dd W(t)$.
+Integrating and dividing by $e^{\theta t}$ gives
+\begin{equation}
+    X(t) = x_0 e^{-\theta t} + \mu\bigl(1-e^{-\theta t}\bigr)
+           + \sigma\!\int_0^t e^{-\theta(t-s)}\,\dd W(s).
+    \label{eq:ou-sol}
+\end{equation}
+The first two terms describe deterministic exponential decay of the initial
+deviation toward $\mu$; the third is an It\^o integral (Shreve~\S4.3) against
+the exponential kernel. By the It\^o isometry
+$\Var[X(t)]=(\sigma^2/2\theta)(1-e^{-2\theta t})$, so as $t\to\infty$,
+$X(t)\Rightarrow\mathcal{N}(\mu,\sigma^2/(2\theta))$. The half-life of
+mean reversion is $\tau=\ln 2/\theta$, and the stationary standard deviation
+$\sigma_s=\sigma/\sqrt{2\theta}$ quantifies what ``far from the mean'' means.
+
+\paragraph{From GBM prices to a stationary spread.} Each $\log S_i(t)$ has
+unbounded variance. But if two log-prices share a common stochastic trend,
+a cointegrating vector $(1,-\beta)$ exists such that
+$Z(t)=\log S_A(t)-\alpha-\beta\log S_B(t)$ is stationary, and
+$Z(t)$ can be modelled by \eqref{eq:ou}.
+
+% ==========================================================
+\section{Methodology}
+% ==========================================================
+
+\textbf{Data.} Daily adjusted-close prices for eight candidate US/Indian pairs
+(Yahoo Finance, 2021-01-01 to 2024-12-31). First 75\% of days used for
+estimation (\emph{training}), last 25\% reserved for \emph{out-of-sample}
+backtest. No test data informs the screen, the fit, or the thresholds.
+
+\textbf{Step 1 -- Cointegration screen.} For each pair we run the
+Engle--Granger two-step procedure: OLS of $\log S_A$ on $\log S_B$ yields
+$(\alpha,\beta)$; an Augmented Dickey--Fuller test is then run on the residuals.
+Accept at the 5\% level if ADF $<-3.34$ (MacKinnon).
+
+\textbf{Step 2 -- OU calibration.} The exact discretisation of \eqref{eq:ou}
+is AR(1): $X_{t+\Delta t}=aX_t+b+\eta_t$ with
+$a=e^{-\theta\Delta t},\;b=\mu(1-a)$. OLS of $X_{t+\Delta t}$ on $X_t$
+with $\Delta t=1/252$ gives $\theta=-\ln(a)/\Delta t$, $\mu=b/(1-a)$,
+$\sigma=\sqrt{2\theta\,\Var(\eta)/(1-a^2)}$.
+
+\textbf{Step 3 -- Trading rule.} Let $Z_t=(X_t-\mu)/\sigma_s$. \textbf{Enter}
+when $|Z_t|>2$ (short spread if $Z_t>2$, long if $Z_t<-2$);
+\textbf{take profit} at $|Z_t|<0.5$; \textbf{stop-loss} at $|Z_t|>3.5$;
+\textbf{time-stop} after $2\tau$. Re-entry is blocked until $|Z_t|$ re-enters
+$\pm 2$ (prevents whipsaw). Thresholds are set \emph{a priori} from the
+stationary distribution of $Z$ and never tuned.
+
+\textbf{Costs.} Leg $A$ at unit notional, leg $B$ at $\beta$; 10 bp per leg per
+trade, so round-trip cost $=2(1+|\beta|)\times10$ bp.
+
+% ==========================================================
+\section{Empirical Results}
+% ==========================================================
+
+\textbf{Pair screening.} Table~\ref{tab:screen} reports the eight pairs.
+Two pass the 5\% cointegration test: \textbf{MA/V} ($\text{ADF}=-3.77$,
+half-life 19.5 d) and \textbf{RELIANCE.NS/ONGC.NS} ($\text{ADF}=-3.39$,
+half-life 25.7 d). The six rejected pairs confirm that sectoral similarity
+does not imply cointegration.
+
+\begin{table}[H]
+\centering\footnotesize
+\caption{Engle--Granger test and OU parameters (training window, 756 days). Bold rows pass at 5\%.}
+\label{tab:screen}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lS[table-format=1.3]S[table-format=-1.2]cS[table-format=1.2]S[table-format=1.3]S[table-format=3.1]}
+\toprule
+Pair & {$\beta$} & {ADF} & Coint. & {$\theta$\,/yr} & {$\sigma_s$} & {Half-life (d)} \\
+\midrule
+KO/PEP                   & 0.738 & -2.46 & No  & 3.72 & 0.036 &  47.0 \\
+XOM/CVX                  & 1.243 & -1.76 & No  & 1.92 & 0.082 &  91.1 \\
+\textbf{MA/V}            & \textbf{0.952} & \textbf{-3.77} & \textbf{Yes} & \textbf{8.96} & \textbf{0.029} & \textbf{19.5} \\
+GLD/SLV                  & 0.231 & -1.30 & No  & 1.57 & 0.056 & 111.6 \\
+HD/LOW                   & 0.839 & -2.31 & No  & 3.85 & 0.046 &  45.3 \\
+HDFCBANK.NS/ICICIBANK.NS & 0.248 & -3.15 & No  & 6.31 & 0.055 &  27.7 \\
+TCS.NS/INFY.NS           & 0.467 & -2.02 & No  & 3.48 & 0.057 &  50.1 \\
+\textbf{RELIANCE.NS/ONGC.NS} & \textbf{0.336} & \textbf{-3.39} & \textbf{Yes} & \textbf{6.79} & \textbf{0.061} & \textbf{25.7} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Backtest (out-of-sample, 252 days).} Table~\ref{tab:bt} gives the
+aggregate results. Three trades: MA/V produced one clean reversion win
+and one stop-loss; RELIANCE/ONGC produced one small win. Combined success
+ratio $2/3=66.7\%$, net P\&L $+2.07\%$ after costs.
+
+\begin{table}[H]
+\centering\footnotesize
+\caption{Out-of-sample backtest results (2023-11-27 to 2024-12-31).}
+\label{tab:bt}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lccS[table-format=1.3]S[table-format=-1.2]S[table-format=-1.2]S[table-format=-1.2]S[table-format=-1.2]S[table-format=2.0]}
+\toprule
+Pair & \# trades & wins & {success} & {avg \%} & {total \%} & {Sharpe} & {max DD\%} & {avg hold (d)} \\
+\midrule
+MA/V                 & 2 & 1 & 0.500 & 1.00 &  2.01 & 0.53 & -2.67 & 33 \\
+RELIANCE.NS/ONGC.NS  & 1 & 1 & 1.000 & 0.07 &  0.07 & {--} &  0.00 & 26 \\
+\midrule
+\textbf{Combined}    & \textbf{3} & \textbf{2} & \textbf{0.667} & \textbf{0.69} & \textbf{2.07} & {--} & \textbf{-2.67} & \textbf{31} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Illustration -- MA/V.} Figure~\ref{fig:main} (left) shows the test-set
+spread and $z$-score with trade markers. Trade~1 (Mar--May 2024, green)
+is a textbook reversion: entry at $z\!\approx\!+2.2$, the spread relaxes
+to $\mu$ over $\sim\!30$ days, exit at $+0.5\sigma_s$ for $+4.7\%$.
+Trade~2 (Aug--Sep 2024, red) is the opposite: after entry at
+$z\!\approx\!+2.5$, the spread drifts to $+4\sigma_s$, triggering the
+$3.5\sigma_s$ stop at $-2.7\%$. The top panel shows the spread breaking
+through the stop band before eventually reverting in November, consistent
+with a temporary cointegration breakdown -- precisely the scenario the
+stop-loss is designed to contain. Figure~\ref{fig:main} (right) plots the
+cumulative P\&L curves.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.58\linewidth]{best_pair_spread.png}\hfill
+\includegraphics[width=0.40\linewidth]{equity_curves.png}
+\caption{\textit{Left:} MA/V out-of-sample spread (top) and $z$-score (bottom).
+Dots = entries, crosses = exits. \textit{Right:} cumulative out-of-sample P\&L
+by pair, net of costs.}
+\label{fig:main}
+\end{figure}
+
+% ==========================================================
+\section{Discussion and Limitations}
+% ==========================================================
+
+\textbf{What worked.} The cointegration filter has teeth: six of eight
+sector-matched candidates were rejected, and both retained pairs were
+profitable out-of-sample. The MA/V winner matches the OU prediction almost
+exactly -- entry just above $+2\sigma_s$, monotone drift to $\mu$, take-profit
+exit -- showing that when the stationarity assumption holds, the edge is real.
+
+\textbf{What failed.} The MA/V stop-loss exposes the main model risk: OU
+parameters estimated in training need not remain valid out-of-sample.
+Cointegration can drift or break under regime shifts. The $3.5\sigma_s$ stop
+contained the loss at $-2.7\%$; without it, the position would have stayed
+open for roughly three additional months in drawdown.
+
+\textbf{Key limitations.} \emph{Sample size:} three trades across two pairs
+is too few for precise claims; $66.7\%$ is directional evidence, not a
+point estimate. \emph{Survivorship bias:} candidates were chosen from
+well-known sector analogues, biasing the screen toward relationships that
+remain recognisable today. \emph{Static $\beta$:} a Kalman-filtered hedge
+ratio that updates online would track drift and likely reduce stop-out
+frequency. \emph{Cost sensitivity:} at 20 bp/leg (more representative of
+Indian equities with STT) roughly half the MA/V profit would be eroded and
+the RELIANCE trade would turn negative.
+
+\textbf{Conclusion.} The OU model, derived directly from the
+It\^o--Doeblin formula applied to the cointegration residual, provides a
+coherent bridge from the continuous-time machinery in Shreve Chs.~3--4 to a
+concrete trading strategy. The out-of-sample evidence is modestly positive
+($+2.07\%$ net in one year, $2/3$ hit rate) and, more importantly, behaves
+as theory predicts: one clean reversion, one stop-loss where the
+stationarity assumption temporarily failed. Together these two outcomes
+form a compact demonstration of both the power and the limits of
+continuous-time mean-reversion modelling in practice.
+
+% ==========================================================
+\vspace{-2pt}
+{\footnotesize
+\begin{thebibliography}{9}
+\setlength{\itemsep}{-1pt}
+\bibitem{shreve2004} Shreve, S.\,E. (2004). \emph{Stochastic Calculus for Finance~II: Continuous-Time Models.} Springer.
+\bibitem{eg1987} Engle, R.\,F.\ \& Granger, C.\,W.\,J. (1987). Co-integration and error correction. \emph{Econometrica} 55(2), 251--276.
+\bibitem{gatev2006} Gatev, E., Goetzmann, W.\,N.\ \& Rouwenhorst, K.\,G. (2006). Pairs trading: performance of a relative-value arbitrage rule. \emph{RFS} 19(3), 797--827.
+\bibitem{mackinnon2010} MacKinnon, J.\,G.\ (2010). Critical values for cointegration tests. \emph{Queen's Econ.\ WP} No.~1227.
+\end{thebibliography}
+}
+
+\end{document}
