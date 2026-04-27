@@ -1,0 +1,508 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+% ---------- Theme ----------
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+\useinnertheme{rectangles}
+\useoutertheme{infolines}
+\setbeamertemplate{navigation symbols}{}      % remove ugly nav buttons
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.45\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.45\paperwidth,ht=2.25ex,dp=1ex,leftskip=1em]{title in head/foot}%
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.10\paperwidth,ht=2.25ex,dp=1ex,rightskip=1em,right]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber
+    \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% ---------- Packages ----------
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+% ---------- Shortcuts ----------
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathcal{N}}
+\definecolor{accent}{HTML}{B85042}
+\definecolor{good}{HTML}{1B7A3E}
+\definecolor{bad}{HTML}{B91C1C}
+
+% ---------- Title metadata ----------
+\title[Pairs Trading via OU]{Pairs Trading via Ornstein--Uhlenbeck \\ Mean Reversion}
+\subtitle{A Continuous-Time Stochastic Calculus Approach}
+\author[Project]{Meemansa Jha- 2024B4A71096G \and Vedika Jain- 2024B4A81111G}
+\institute{Stochastic Calculus for Finance}
+\date{\today}
+
+\begin{document}
+
+% =================================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% =================================================================
+\begin{frame}{Motivation: The Pairs Trading Idea}
+
+Two stocks in the same industry share most of their daily moves.
+
+\bigskip
+\textbf{Observation:}
+\begin{itemize}
+  \item Each individual price is non-stationary -- it drifts off to infinity.
+  \item Yet the \emph{spread} between two cointegrated stocks
+        wobbles around a stable mean.
+\end{itemize}
+
+\bigskip
+\textbf{Strategy:}
+\begin{itemize}
+  \item When the spread drifts unusually far from its mean, bet on reversion.
+  \item Short the relatively expensive leg, long the cheap leg, close when it returns.
+\end{itemize}
+
+\bigskip
+\textbf{Mathematical model:} the spread follows an
+\textcolor{accent}{Ornstein--Uhlenbeck (OU) process} -- the simplest
+mean-reverting It\^o SDE, structurally identical to Shreve's Vasicek
+interest-rate model.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Why Is the Spread Stationary?}
+
+\textbf{Each log-price is a common factor + idiosyncratic noise:}
+
+\begin{align*}
+  \log S_A(t) &= c_A + \beta\,F(t) + \xi_A(t) \\
+  \log S_B(t) &= c_B +     \,F(t) + \xi_B(t)
+\end{align*}
+
+where $F(t)$ = common (macro/sectoral) factor -- non-stationary; \;
+$\xi_i$ = idiosyncratic noise -- stationary.
+
+\bigskip
+\textbf{Form the spread} $Z(t) = \log S_A(t) - \alpha - \beta\log S_B(t)$ \;\;(with $\alpha = c_A - \beta c_B$):
+
+\begin{block}{}
+\centering
+$Z(t) \;=\; \xi_A(t) \;-\; \beta\,\xi_B(t)$
+\end{block}
+
+The non-stationary common factor $F(t)$ \emph{cancels} -- only stationary
+noise remains.
+
+\bigskip
+\textbf{Engle--Granger (1987):} if such a $\beta$ exists, the pair is
+\emph{cointegrated}. The spread can then be modelled by a stationary,
+mean-reverting SDE.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{The Ornstein--Uhlenbeck SDE}
+
+\begin{block}{Stochastic differential equation}
+\centering
+$\dd X(t) \;=\; \theta\bigl(\mu - X(t)\bigr)\,\dd t \;+\; \sigma\,\dd W(t),
+\qquad X(0)=x_0$
+\end{block}
+
+\medskip
+\begin{itemize}
+  \item $\theta > 0$ -- \textbf{mean reversion speed}: how fast $X$ is pulled back to $\mu$.
+  \item $\mu$ -- \textbf{long-run mean}: the level $X$ reverts to.
+  \item $\sigma > 0$ -- \textbf{volatility}: size of the random kicks.
+  \item $W(t)$ -- standard Brownian motion.
+\end{itemize}
+
+\bigskip
+\textbf{Reading the SDE:}
+
+\begin{itemize}
+  \item Drift $\theta(\mu - X)$ \emph{always} points toward $\mu$
+        -- a restoring force, like a spring.
+  \item Diffusion $\sigma\,\dd W$ adds random noise that prevents $X$
+        from collapsing onto $\mu$.
+\end{itemize}
+
+\medskip
+\textbf{Same equation as Vasicek model}:
+identify $\theta_{\text{ours}} = \beta_{\text{Vasicek}}$,
+$\mu_{\text{ours}} = a_{\text{Vasicek}}/\beta_{\text{Vasicek}}$.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Closed-Form Solution: Strategy}
+
+\textbf{Goal:} find an explicit formula for $X(t)$.
+
+\bigskip
+\textbf{Strategy:} \emph{integrating factor}.
+
+The drift contains the term $-\theta X(t)\,\dd t$, which couples $X$ to
+itself. We multiply $X$ by a deterministic factor chosen to \emph{cancel}
+this coupling.
+
+\bigskip
+\textbf{Step 1:} Define the auxiliary process
+\[
+Y(t) \;:=\; e^{\theta t}\,X(t).
+\]
+
+\bigskip
+\textbf{Step 2:} Compute $\dd Y(t)$ using the It\^o--Doeblin formula with $f(t,x) = e^{\theta t}\,x$:
+\begin{align*}
+  f_t       &= \theta\,e^{\theta t}\,x \\
+  f_x       &= e^{\theta t} \\
+  f_{xx}    &= 0 \quad \text{(linear in } x\text{)}
+\end{align*}
+
+The $f_{xx} = 0$ is the key: \emph{no It\^o correction term} appears.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Closed-Form Solution: The Cancellation}
+
+\textbf{Step 3:} apply It\^o--Doeblin and substitute the OU SDE.
+
+\medskip
+\[
+\dd Y(t) \;=\; f_t\,\dd t + f_x\,\dd X(t) + \tfrac{1}{2}f_{xx}\,(\dd X)^2.
+\]
+With $f_{xx}=0$:
+\[
+\dd Y(t) \;=\; \theta\,e^{\theta t}\,X(t)\,\dd t + e^{\theta t}\,\dd X(t).
+\]
+Substituting $\dd X = \theta(\mu - X)\,\dd t + \sigma\,\dd W$:
+\[
+\dd Y(t) \;=\; \theta\,e^{\theta t}\,X(t)\,\dd t + e^{\theta t}\,\bigl[\theta(\mu - X(t))\,\dd t + \sigma\,\dd W(t)\bigr].
+\]
+
+\medskip
+\textbf{The two $X(t)\,\dd t$ terms cancel exactly:}
+\begin{block}{}
+\centering
+$\dd Y(t) \;=\; \theta\mu\,e^{\theta t}\,\dd t \;+\; \sigma\,e^{\theta t}\,\dd W(t).$
+\end{block}
+
+\medskip
+The transformed SDE has \emph{deterministic} coefficients (no $Y$ on the right-hand side),
+so it can be integrated directly.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Closed-Form Solution: The Result}
+
+\textbf{Step 4:} integrate from $0$ to $t$ and divide by $e^{\theta t}$.
+
+\medskip
+The first term integrates by ordinary calculus to $\mu(e^{\theta t}-1)$;
+the second is an It\^o integral (Shreve \S4.3) and stays as such:
+\[
+Y(t) - x_0 \;=\; \mu\bigl(e^{\theta t}-1\bigr) + \sigma\!\int_0^t e^{\theta s}\,\dd W(s).
+\]
+Substituting $Y(t) = e^{\theta t}X(t)$ and dividing:
+
+\begin{block}{Closed-form OU solution}
+\[
+X(t) \;=\; \underbrace{x_0\,e^{-\theta t}}_{\text{decay of }x_0}
+       \;+\; \underbrace{\mu(1 - e^{-\theta t})}_{\text{pull toward }\mu}
+       \;+\; \underbrace{\sigma\!\int_0^t e^{-\theta(t-s)}\,\dd W(s)}_{\text{accumulated noise}}
+\]
+\end{block}
+
+\medskip
+The exponential kernel $e^{-\theta(t-s)}$ in the It\^o integral
+\textbf{discounts old shocks}: recent noise gets full weight, old noise decays.
+The process has a \emph{fading memory}.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Stationary Distribution \& Half-Life}
+
+\textbf{Mean and variance.} Take expectations using the zero-mean property
+of It\^o integrals; compute variance via the It\^o isometry:
+\begin{align*}
+  \E[X(t)]   &= x_0\,e^{-\theta t} + \mu\bigl(1-e^{-\theta t}\bigr) \\
+  \Var[X(t)] &= \frac{\sigma^2}{2\theta}\bigl(1 - e^{-2\theta t}\bigr)
+\end{align*}
+
+\textbf{As $t \to \infty$:}
+\begin{block}{Stationary distribution}
+\centering
+$X(t) \;\Longrightarrow\; \N\!\left(\mu,\;\dfrac{\sigma^2}{2\theta}\right)$
+\quad with stationary std dev \;
+$\sigma_s \;=\; \dfrac{\sigma}{\sqrt{2\theta}}$.
+\end{block}
+
+\textbf{Half-life.} Setting $\E[X(t)]-\mu = \tfrac{1}{2}(x_0-\mu)$ gives
+\[
+\tau \;=\; \frac{\ln 2}{\theta}.
+\]
+
+\medskip
+\textbf{This anchors the strategy:} the z-score $Z(t) = (X-\mu)/\sigma_s$
+is standard-normal in the stationary state. So $|Z| > 2$ is a
+$\sim 5\%$ tail event -- rare and mean-reversion-worthy.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Methodology: Three Steps}
+
+\textbf{Step 1 -- Cointegration screen} (Engle--Granger 2-step):
+\begin{itemize}
+  \item OLS regress $\log S_A$ on $\log S_B$ $\Rightarrow$ hedge ratio $\beta$, residuals.
+  \item Augmented Dickey--Fuller test on residuals.
+  \item Accept pair if ADF $< -3.34$ (5\% MacKinnon critical value).
+\end{itemize}
+
+\medskip
+\textbf{Step 2 -- OU calibration} (next slide).
+
+\medskip
+\textbf{Step 3 -- Trading rule based on z-score} (slide after).
+
+\bigskip
+\textbf{Data and split.}
+\begin{itemize}
+  \item Yahoo Finance daily adjusted-close prices, 2021-01 to 2024-12.
+  \item 8 candidate US/Indian pairs across 7 sectors.
+  \item First 75\% of trading days for fitting (\emph{training});
+        last 25\% for backtest (\emph{out-of-sample}).
+  \item No test data informs the screen, the fit, or the thresholds.
+\end{itemize}
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Calibration: From OU to AR(1)}
+
+The OU closed-form, applied over one timestep $\Delta t$, gives
+\[
+X_{t+\Delta t} \;=\; X_t\,e^{-\theta\Delta t} + \mu\bigl(1-e^{-\theta\Delta t}\bigr)
++ \sigma\!\int_t^{t+\Delta t}\! e^{-\theta(t+\Delta t - s)}\,\dd W(s).
+\]
+Defining $a := e^{-\theta\Delta t}$, $b := \mu(1-a)$, this is a
+\textbf{discrete-time AR(1)}:
+\begin{block}{}
+\centering
+$X_{t+\Delta t} \;=\; a\,X_t \;+\; b \;+\; \eta_t,
+\qquad \eta_t \sim \N\!\bigl(0,\,\sigma^2(1-a^2)/(2\theta)\bigr).$
+\end{block}
+
+\medskip
+\textbf{Fitting.} OLS regression of $X_{t+\Delta t}$ on $X_t$ gives
+$\hat a, \hat b$. Invert:
+\[
+\hat\theta = -\frac{\ln \hat a}{\Delta t}, \qquad
+\hat\mu    = \frac{\hat b}{1-\hat a}, \qquad
+\hat\sigma = \sqrt{\frac{2\hat\theta\,\hat V_\eta}{1-\hat a^2}}.
+\]
+With $\Delta t = 1/252$, parameters come out in per-year units.
+
+\medskip
+\textbf{Note:} this discretisation is \emph{exact}, not an approximation,
+because the OU SDE has a closed-form solution.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Trading Rule}
+
+Define the standardised spread
+\[
+Z(t) \;=\; \frac{X(t) - \hat\mu}{\hat\sigma_s}.
+\]
+In the stationary state $Z \sim \N(0,1)$.
+
+\bigskip
+\textbf{Rule:}
+\begin{itemize}\itemsep1pt
+  \item \textbf{Enter} when $|Z| > 2$ (short spread if $Z>2$, long if $Z<-2$).
+  \item \textbf{Take profit} when $|Z| < 0.5$.
+  \item \textbf{Stop-loss} when $|Z| > 3.5$.
+  \item \textbf{Time-stop} after $2\tau$ (two half-lives).
+  \item \textbf{Re-arm} only when $|Z|$ re-enters the $\pm 2$ band.
+\end{itemize}
+
+\smallskip
+\textbf{Justification of thresholds.}
+\begin{itemize}\itemsep1pt
+  \item $\pm 2$: $\sim 5\%$ tail of stationary $\N(0,1)$ -- statistically rare.
+  \item $\pm 0.5$: take most of the reversion without waiting for exact zero crossing.
+  \item $\pm 3.5$: $\sim 0.05\%$ tail -- if we hit this, the model has likely failed.
+  \item $2\tau$: by then $\E[|Z|]$ has decayed to 0.5 by theory.
+\end{itemize}
+
+\smallskip
+\textbf{Costs:} 10 bp per leg per trade.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Results -- Pair Screening}
+
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+Pair & $\beta$ & ADF & Coint? & $\theta$/yr & $\sigma_s$ & Half-life (d) \\
+\midrule
+KO/PEP                   & 0.738 & $-2.46$ & No  & 3.72 & 0.036 &  47.0 \\
+XOM/CVX                  & 1.243 & $-1.76$ & No  & 1.92 & 0.082 &  91.1 \\
+\textbf{MA/V}            & \textbf{0.952} & $\boldsymbol{-3.77}$ & \textbf{Yes} & \textbf{8.96} & \textbf{0.029} & \textbf{19.5} \\
+GLD/SLV                  & 0.231 & $-1.30$ & No  & 1.57 & 0.056 & 111.6 \\
+HD/LOW                   & 0.839 & $-2.31$ & No  & 3.85 & 0.046 &  45.3 \\
+HDFCBANK/ICICIBANK       & 0.248 & $-3.15$ & No  & 6.31 & 0.055 &  27.7 \\
+TCS/INFY                 & 0.467 & $-2.02$ & No  & 3.48 & 0.057 &  50.1 \\
+\textbf{RELIANCE/ONGC}   & \textbf{0.336} & $\boldsymbol{-3.39}$ & \textbf{Yes} & \textbf{6.79} & \textbf{0.061} & \textbf{25.7} \\
+\bottomrule
+\end{tabular}
+
+\bigskip
+\flushleft
+\textbf{Two of eight pairs pass} the 5\% test:
+\textbf{MA/V} (ADF $=-3.77$) and \textbf{RELIANCE/ONGC} (ADF $=-3.39$).
+
+\medskip
+The other six fail despite belonging to the same sector --
+\emph{sectoral similarity does not guarantee cointegration}. The screen
+is doing real work; 75\% of obvious candidates are rejected.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Results -- Out-of-Sample Backtest}
+
+\begin{columns}[T, onlytextwidth]
+\begin{column}{0.55\textwidth}
+\centering
+\includegraphics[width=\linewidth]{best_pair_spread.png}
+
+\medskip
+{\footnotesize MA/V spread (top) and z-score (bottom). Dots = entries, crosses = exits.}
+\end{column}
+
+\begin{column}{0.42\textwidth}
+\small
+\textbf{Backtest summary} (Nov 2023 -- Dec 2024)
+\medskip
+\begin{tabular}{lr}
+\toprule
+\# trades        & 3 \\
+Wins             & 2 \\
+\textbf{Success ratio} & \textbf{66.7\%} \\
+Total net P\&L   & \textbf{+2.07\%} \\
+Sharpe           & 0.53 \\
+Max drawdown     & $-2.67\%$ \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textcolor{good}{\textbf{Trade 1}} (Mar--May 24): enter at $z\!\approx\!+2.2$, monotone reversion, exit at $+0.5\sigma_s$. \;
+\textcolor{good}{\textbf{+4.7\%}}.
+
+\medskip
+\textcolor{bad}{\textbf{Trade 2}} (Aug--Sep 24): enter at $z\!\approx\!+2.5$, spread drifts to $+4\sigma_s$ -- cointegration breakdown -- stop-loss fires. \;
+\textcolor{bad}{\textbf{$-2.7\%$}}.
+
+\end{column}
+\end{columns}
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Discussion -- What the Two Trades Teach Us}
+
+\textbf{Trade 1: textbook OU reversion.}
+\begin{itemize}
+  \item Spread drifts to $+2.2\sigma_s$, reverts in $\sim$30 days
+        (close to the estimated 19.5-day half-life).
+  \item Behaviour matches theory's prediction almost exactly.
+  \item When the stationarity assumption holds, the statistical edge is real.
+\end{itemize}
+
+\bigskip
+\textbf{Trade 2: temporary cointegration breakdown.}
+\begin{itemize}
+  \item Spread drifts to $+4\sigma_s$ instead of reverting -- a $\sim 0.003\%$ event under
+        the OU model. The model has failed in this window.
+  \item The $3.5\sigma_s$ stop-loss limits the damage to $-2.7\%$.
+  \item Without the stop, the position would have stayed open in drawdown for
+        nearly three more months.
+\end{itemize}
+
+\bigskip
+\textbf{Both behaviours are predicted}: OU theory says deviations
+\emph{should} revert in expectation, but does not say every realisation will.
+The strategy is a positive-expected-value bet, not a deterministic arbitrage.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}{Conclusion \& Limitations}
+
+\textbf{What worked.}
+\begin{itemize}
+  \item Cointegration filter has real teeth -- 6 of 8 sector-matched
+        candidates rejected.
+  \item Both retained pairs profitable out-of-sample.
+  \item Trade behaviour matches OU theory: clean reversion when
+        stationarity holds, controlled stop-loss when it fails.
+\end{itemize}
+
+\bigskip
+\textbf{Honest limitations.}
+\begin{itemize}
+  \item \textbf{Sample size:} 3 trades only; 95\% CI on hit rate is wide $[21\%, 94\%]$.
+  \item \textbf{Survivorship bias:} candidates were hand-picked from
+        today's well-known sector analogues.
+  \item \textbf{Static $\beta$:} a Kalman-filtered $\beta$ would adapt
+        to drift and likely reduce stop-outs.
+  \item \textbf{Cost sensitivity:} doubling to 20 bp/leg halves MA/V
+        profit; turns RELIANCE negative.
+\end{itemize}
+
+\bigskip
+\textbf{Bottom line.} The OU model -- derived directly from the
+It\^o--Doeblin formula -- gives a coherent bridge from the continuous-time
+machinery of to a concrete, testable trading strategy.
+Modest but positive evidence, behaving exactly as theory predicts.
+
+\end{frame}
+
+% =================================================================
+\begin{frame}
+  \centering
+  \vspace{1.5cm}
+  {\Huge\textbf{Thank you}}\\[0.8cm]
+
+  \vspace{2cm}
+
+  \footnotesize
+  \emph{References:}
+  Shreve (2004) Stochastic Calculus for Finance II;
+  Engle \& Granger (1987) Econometrica;
+  Gatev, Goetzmann \& Rouwenhorst (2006) RFS;
+  MacKinnon (2010).
+\end{frame}
+
+\end{document}
